@@ -182,14 +182,14 @@ def plot_pcr_gauge(pcr):
 
 
 # =========================================================
-# TOTAL CE vs PE TREND CHART
+# TOTAL CE vs PE + LIVE PRICE TREND
 # =========================================================
-def plot_total_oi_trend(history_df):
+def plot_total_oi_trend(history_df, index_name="NIFTY"):
 
     fig = go.Figure()
 
     # -----------------------------------------------------
-    # CE OI
+    # TOTAL CE OI
     # -----------------------------------------------------
     fig.add_trace(
         go.Scatter(
@@ -210,7 +210,7 @@ def plot_total_oi_trend(history_df):
     )
 
     # -----------------------------------------------------
-    # PE OI
+    # TOTAL PE OI
     # -----------------------------------------------------
     fig.add_trace(
         go.Scatter(
@@ -231,68 +231,7 @@ def plot_total_oi_trend(history_df):
     )
 
     # -----------------------------------------------------
-    # LAYOUT
-    # -----------------------------------------------------
-    fig.update_layout(
-
-        title="Total CE vs PE Open Interest Trend",
-
-        xaxis_title="Time",
-
-        yaxis_title="Open Interest",
-
-        height=500,
-
-        template="plotly_dark",
-
-        hovermode="x unified",
-
-        paper_bgcolor="#020f06",
-
-        plot_bgcolor="#020f06",
-
-        font=dict(
-            color="#a0ffb8"
-        ),
-
-        title_font=dict(
-            color="#00ff66"
-        ),
-
-        legend=dict(
-
-            bgcolor="#020f06",
-
-            bordercolor="#00ff66",
-
-            borderwidth=1,
-
-            font=dict(
-                color="#a0ffb8"
-            ),
-        ),
-
-        xaxis=dict(
-            gridcolor="rgba(0,255,102,0.08)"
-        ),
-
-        yaxis=dict(
-            gridcolor="rgba(0,255,102,0.08)"
-        ),
-    )
-
-    return fig
-
-
-# =========================================================
-# LIVE INDEX SPOT PRICE TREND
-# =========================================================
-def plot_spot_trend(history_df, index_name="NIFTY"):
-
-    fig = go.Figure()
-
-    # -----------------------------------------------------
-    # SPOT PRICE LINE
+    # LIVE INDEX PRICE
     # -----------------------------------------------------
     fig.add_trace(
         go.Scatter(
@@ -306,9 +245,11 @@ def plot_spot_trend(history_df, index_name="NIFTY"):
             name=f"{index_name} Spot",
 
             line=dict(
-                color="#00ff66",
+                color="#00bfff",
                 width=3
             ),
+
+            yaxis="y2",
         )
     )
 
@@ -317,13 +258,23 @@ def plot_spot_trend(history_df, index_name="NIFTY"):
     # -----------------------------------------------------
     fig.update_layout(
 
-        title=f"{index_name} Live Spot Price Trend",
+        title=f"{index_name} OI + Live Price Trend",
 
         xaxis_title="Time",
 
-        yaxis_title="Spot Price",
+        yaxis=dict(
+            title="Open Interest",
+            gridcolor="rgba(0,255,102,0.08)"
+        ),
 
-        height=500,
+        yaxis2=dict(
+            title="Spot Price",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+        ),
+
+        height=550,
 
         template="plotly_dark",
 
@@ -355,10 +306,6 @@ def plot_spot_trend(history_df, index_name="NIFTY"):
         ),
 
         xaxis=dict(
-            gridcolor="rgba(0,255,102,0.08)"
-        ),
-
-        yaxis=dict(
             gridcolor="rgba(0,255,102,0.08)"
         ),
     )
