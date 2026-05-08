@@ -728,7 +728,7 @@ if valid and st.session_state.load_clicked:
         with st.spinner("Fetching live option chain..."):
             live_data = fetch_option_chain(
                 kite=kite,
-                instruments_df=instruments_df,
+                instruments=instruments_df,
                 index_name=selected_index,
                 num_strikes=num_strikes,
                 manual_atm=manual_strike if manual_strike != 0 else None,
