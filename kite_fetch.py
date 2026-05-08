@@ -1,255 +1,278 @@
-# =========================================================
-# kite_fetch.py
-# =========================================================
-
 import pandas as pd
 from datetime import datetime
 
-# =========================================================
-# INDEX CONFIG
-# =========================================================
-INDEX_SPOT_MAP = {
-    "NIFTY":      "NSE:NIFTY 50",
-    "BANKNIFTY":  "NSE:NIFTY BANK",
-    "FINNIFTY":   "NSE:NIFTY FIN SERVICE",
-    "MIDCPNIFTY": "NSE:NIFTY MID SELECT",
-    "SENSEX":     "BSE:SENSEX",
-    "BANKEX":     "BSE:BANKEX",
-}
 
-# =========================================================
-# STRIKE INTERVALS
-# =========================================================
-STRIKE_INTERVALS = {
-    "NIFTY":      50,
-    "BANKNIFTY":  100,
-    "FINNIFTY":   50,
-    "MIDCPNIFTY": 25,
-    "SENSEX":     100,
-    "BANKEX":     100,
-}
-
-# =========================================================
-# LOAD INSTRUMENTS
-# =========================================================
-def load_instruments(kite):
-
-    nfo = kite.instruments("NFO")
-
-    try:
-        bfo = kite.instruments("BFO")
-        instruments = nfo + bfo
-    except:
-        instruments = nfo
-
-    df = pd.DataFrame(instruments)
-
-    df["expiry"] = pd.to_datetime(df["expiry"]).dt.date
-
-    return df
-
-
-# =========================================================
-# ROUND TO STRIKE
-# =========================================================
-def round_to_strike(price, interval):
-
-    return round(price / interval) * interval
-
-
-# =========================================================
-# LIVE INDEX PRICES
-# =========================================================
-def get_all_indices_data(kite):
-
-    symbols = list(INDEX_SPOT_MAP.values())
-
-    quotes = kite.quote(symbols)
-
-    rows = []
-
-    for index_name, symbol in INDEX_SPOT_MAP.items():
-
-        q = quotes.get(symbol, {})
-
-        last_price = q.get("last_price", 0)
-
-        ohlc = q.get("ohlc", {})
-
-        close = ohlc.get("close", last_price)
-
-        change = round(last_price - close, 2)
-
-        change_pct = round((change / close) * 100, 2) if close else 0
-
-        rows.append({
-            "Index": index_name,
-            "Price": last_price,
-            "Change": change,
-            "Change %": change_pct,
-        })
-
-    return pd.DataFrame(rows)
-
-
-# =========================================================
+# =====================================================
 # FETCH OPTION CHAIN
-# =========================================================
+# =====================================================
+
 def fetch_option_chain(
     kite,
-    instruments_df,
-    index_name="NIFTY",
-    num_strikes=5,
-    manual_atm=None,
+    instruments,
+    selected_index="NIFTY",
+    strike_range=5,
+    custom_atm=0
 ):
 
-    # =====================================================
-    # SPOT PRICE
-    # =====================================================
-    spot_symbol = INDEX_SPOT_MAP[index_name]
+    try:
 
-    spot = kite.ltp([spot_symbol])[spot_symbol]["last_price"]
+        # =====================================================
+        # FILTER OPTIONS
+        # =====================================================
 
-    # =====================================================
-    # STRIKE INTERVAL
-    # =====================================================
-    strike_interval = STRIKE_INTERVALS[index_name]
+        options_df = instruments[
+            (instruments["name"] == selected_index)
+            &
+            (instruments["instrument_type"].isin(["CE", "PE"]))
+        ].copy()
 
-    # =====================================================
-    # ATM STRIKE
-    # =====================================================
-    if manual_atm and int(manual_atm) != 0:
-        atm = int(manual_atm)
-    else:
-        atm = round_to_strike(spot, strike_interval)
+        if options_df.empty:
+            raise Exception(
+                f"No instruments found for {selected_index}"
+            )
 
-    # =====================================================
-    # STRIKE LIST
-    # =====================================================
-    strike_list = [
-        atm + (i * strike_interval)
-        for i in range(-num_strikes, num_strikes + 1)
-    ]
+        # =====================================================
+        # EXPIRY CLEANING
+        # =====================================================
 
-    # =====================================================
-    # FILTER OPTIONS
-    # =====================================================
-    options_df = instruments_df[
-        (instruments_df["name"] == index_name)
-        & (instruments_df["instrument_type"].isin(["CE", "PE"]))
-        & (instruments_df["strike"].isin(strike_list))
-    ]
+        options_df["expiry"] = pd.to_datetime(
+            options_df["expiry"]
+        ).dt.date
 
-    if options_df.empty:
+        today = datetime.now().date()
 
-        raise ValueError(
-            f"No instruments found for {index_name}"
+        future_expiries = options_df[
+            options_df["expiry"] >= today
+        ]
+
+        if future_expiries.empty:
+            raise Exception(
+                f"No future expiry found for {selected_index}"
+            )
+
+        nearest_expiry = future_expiries[
+            "expiry"
+        ].min()
+
+        options_df = future_expiries[
+            future_expiries["expiry"] == nearest_expiry
+        ]
+
+        # =====================================================
+        # SPOT SYMBOL MAP
+        # =====================================================
+
+        spot_map = {
+            "NIFTY": "NSE:NIFTY 50",
+            "BANKNIFTY": "NSE:NIFTY BANK",
+            "FINNIFTY": "NSE:NIFTY FIN SERVICE",
+            "MIDCPNIFTY": "NSE:NIFTY MID SELECT",
+        }
+
+        spot_symbol = spot_map.get(
+            selected_index,
+            "NSE:NIFTY 50"
         )
 
-    # =====================================================
-    # NEAREST EXPIRY
-    # =====================================================
-    expiry = options_df["expiry"].min()
+        # =====================================================
+        # GET SPOT PRICE
+        # =====================================================
 
-    options_df = options_df[
-        options_df["expiry"] == expiry
-    ]
+        spot_price = kite.ltp(
+            [spot_symbol]
+        )[spot_symbol]["last_price"]
 
-    # =====================================================
-    # QUOTE SYMBOLS
-    # =====================================================
-    symbols = [
-        f"{row['exchange']}:{row['tradingsymbol']}"
-        for _, row in options_df.iterrows()
-    ]
+        # =====================================================
+        # ATM STRIKE
+        # =====================================================
 
-    quotes = kite.quote(symbols)
+        available_strikes = sorted(
+            options_df["strike"].unique()
+        )
 
-    # =====================================================
-    # BUILD OPTION CHAIN
-    # =====================================================
-    data = []
-
-    total_ce_oi = 0
-    total_pe_oi = 0
-
-    for strike in strike_list:
-
-        ce_row = options_df[
-            (options_df["strike"] == strike)
-            & (options_df["instrument_type"] == "CE")
-        ]
-
-        pe_row = options_df[
-            (options_df["strike"] == strike)
-            & (options_df["instrument_type"] == "PE")
-        ]
-
-        ce_oi = ce_ltp = 0
-        pe_oi = pe_ltp = 0
-
-        # =================================================
-        # CE DATA
-        # =================================================
-        if not ce_row.empty:
-
-            ce_symbol = (
-                f"{ce_row.iloc[0]['exchange']}:"
-                f"{ce_row.iloc[0]['tradingsymbol']}"
+        if custom_atm != 0:
+            atm_strike = custom_atm
+        else:
+            atm_strike = min(
+                available_strikes,
+                key=lambda x: abs(x - spot_price)
             )
 
-            ce_quote = quotes.get(ce_symbol, {})
+        # =====================================================
+        # STRIKE RANGE
+        # =====================================================
 
-            ce_oi = ce_quote.get("oi", 0)
+        strike_index = available_strikes.index(
+            atm_strike
+        )
 
-            ce_ltp = ce_quote.get("last_price", 0)
+        start_idx = max(
+            0,
+            strike_index - strike_range
+        )
 
-        # =================================================
-        # PE DATA
-        # =================================================
-        if not pe_row.empty:
+        end_idx = min(
+            len(available_strikes),
+            strike_index + strike_range + 1
+        )
 
-            pe_symbol = (
-                f"{pe_row.iloc[0]['exchange']}:"
-                f"{pe_row.iloc[0]['tradingsymbol']}"
+        selected_strikes = available_strikes[
+            start_idx:end_idx
+        ]
+
+        chain_df = options_df[
+            options_df["strike"].isin(
+                selected_strikes
+            )
+        ].copy()
+
+        # =====================================================
+        # TRADING SYMBOLS
+        # =====================================================
+
+        trading_symbols = []
+
+        for _, row in chain_df.iterrows():
+
+            trading_symbols.append(
+                f"NFO:{row['tradingsymbol']}"
             )
 
-            pe_quote = quotes.get(pe_symbol, {})
+        quotes = kite.quote(trading_symbols)
 
-            pe_oi = pe_quote.get("oi", 0)
+        # =====================================================
+        # BUILD DATA
+        # =====================================================
 
-            pe_ltp = pe_quote.get("last_price", 0)
+        final_data = []
 
-        total_ce_oi += ce_oi
-        total_pe_oi += pe_oi
+        for strike in selected_strikes:
 
-        pcr = round(pe_oi / ce_oi, 3) if ce_oi != 0 else 0
+            ce_row = chain_df[
+                (chain_df["strike"] == strike)
+                &
+                (chain_df["instrument_type"] == "CE")
+            ]
 
-        data.append({
-            "Strike": strike,
-            "CE_OI": ce_oi,
-            "CE_LTP": ce_ltp,
-            "PE_OI": pe_oi,
-            "PE_LTP": pe_ltp,
-            "PCR": pcr,
-        })
+            pe_row = chain_df[
+                (chain_df["strike"] == strike)
+                &
+                (chain_df["instrument_type"] == "PE")
+            ]
 
-    df = pd.DataFrame(data)
+            ce_data = {}
+            pe_data = {}
 
-    total_pcr = (
-        round(total_pe_oi / total_ce_oi, 3)
-        if total_ce_oi != 0
-        else 0
-    )
+            # =====================================================
+            # CE DATA
+            # =====================================================
 
-    return {
-        "spot": spot,
-        "atm": atm,
-        "expiry": expiry,
-        "data": df,
-        "total_ce_oi": total_ce_oi,
-        "total_pe_oi": total_pe_oi,
-        "total_pcr": total_pcr,
-        "timestamp": datetime.now(),
-        "index_name": index_name,
-    }
+            if not ce_row.empty:
+
+                ce_symbol = (
+                    "NFO:"
+                    +
+                    ce_row.iloc[0]["tradingsymbol"]
+                )
+
+                ce_quote = quotes.get(
+                    ce_symbol,
+                    {}
+                )
+
+                ce_data = {
+                    "CE_OI": ce_quote.get("oi", 0),
+                    "CE_LTP": ce_quote.get(
+                        "last_price",
+                        0
+                    ),
+                    "CE_VOLUME": ce_quote.get(
+                        "volume",
+                        0
+                    ),
+                }
+
+            # =====================================================
+            # PE DATA
+            # =====================================================
+
+            if not pe_row.empty:
+
+                pe_symbol = (
+                    "NFO:"
+                    +
+                    pe_row.iloc[0]["tradingsymbol"]
+                )
+
+                pe_quote = quotes.get(
+                    pe_symbol,
+                    {}
+                )
+
+                pe_data = {
+                    "PE_OI": pe_quote.get("oi", 0),
+                    "PE_LTP": pe_quote.get(
+                        "last_price",
+                        0
+                    ),
+                    "PE_VOLUME": pe_quote.get(
+                        "volume",
+                        0
+                    ),
+                }
+
+            # =====================================================
+            # FINAL ROW
+            # =====================================================
+
+            final_data.append({
+
+                "Strike": strike,
+
+                "CE_OI": ce_data.get(
+                    "CE_OI",
+                    0
+                ),
+
+                "CE_LTP": ce_data.get(
+                    "CE_LTP",
+                    0
+                ),
+
+                "CE_VOLUME": ce_data.get(
+                    "CE_VOLUME",
+                    0
+                ),
+
+                "PE_OI": pe_data.get(
+                    "PE_OI",
+                    0
+                ),
+
+                "PE_LTP": pe_data.get(
+                    "PE_LTP",
+                    0
+                ),
+
+                "PE_VOLUME": pe_data.get(
+                    "PE_VOLUME",
+                    0
+                ),
+            })
+
+        # =====================================================
+        # RETURN
+        # =====================================================
+
+        final_df = pd.DataFrame(final_data)
+
+        return (
+            final_df,
+            spot_price,
+            atm_strike,
+            nearest_expiry
+        )
+
+    except Exception as e:
+
+        raise Exception(str(e))
