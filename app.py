@@ -16,7 +16,7 @@ from charts import (
     plot_oi_chart,
     plot_pcr_gauge,
     plot_total_oi_trend,
-    plot_spot_trend,
+    
     )
 
 from database import (
