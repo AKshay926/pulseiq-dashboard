@@ -5,4 +5,4 @@ plotly
 numpy
 streamlit-autorefresh
 pytz
-schedule
+sschedule==1.2.2
