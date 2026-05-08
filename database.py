@@ -2,6 +2,12 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 import os
+import pytz
+
+# =========================================================
+# IST TIMEZONE
+# =========================================================
+IST = pytz.timezone("Asia/Kolkata")
 
 # =========================================================
 # DATABASE PATH
@@ -65,7 +71,10 @@ def save_oi_snapshot(
 
     cursor = conn.cursor()
 
-    timestamp = datetime.now().strftime(
+    # =====================================================
+    # IST TIMESTAMP
+    # =====================================================
+    timestamp = datetime.now(IST).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 
@@ -105,7 +114,7 @@ def load_today_history():
 
     conn = sqlite3.connect(DB_FILE)
 
-    today = datetime.now().strftime(
+    today = datetime.now(IST).strftime(
         "%Y-%m-%d"
     )
 
