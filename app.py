@@ -427,7 +427,7 @@ st.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-
+    
 # =====================================================
 # CONFIG
 # =====================================================
@@ -520,7 +520,40 @@ def get_kite():
     if token_data:
         kite.set_access_token(token_data["access_token"])
     return kite
+# =====================================================
+# LIVE MARKET TICKER
+# =====================================================
+try:
+    kite = get_kite()
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
+    ticker_cols = st.columns(6)
+    market_symbols = {
+        "NIFTY":      "NSE:NIFTY 50",
+        "BANKNIFTY":  "NSE:NIFTY BANK",
+        "FINNIFTY":   "NSE:NIFTY FIN SERVICE",
+        "MIDCPNIFTY": "NSE:NIFTY MID SELECT",
+        "SENSEX":     "BSE:SENSEX",
+        "BANKEX":     "BSE:BANKEX",
+    }
+
+    ticker_quotes = kite.ltp(list(market_symbols.values()))
+
+    for i, (name, symbol) in enumerate(market_symbols.items()):
+        live_price = ticker_quotes[symbol]["last_price"]
+        with ticker_cols[i]:
+            st.markdown(f"""
+            <div style="background:#041208;border:1px solid #00ff6630;border-radius:14px;
+                        padding:14px;text-align:center;box-shadow:0 0 12px #00ff6615;">
+                <div style="color:#00ff66;font-size:11px;letter-spacing:0.14em;
+                            margin-bottom:7px;font-family:'Rajdhani',sans-serif;
+                            text-transform:uppercase;">{name}</div>
+                <div style="color:#eafff0;font-size:24px;font-weight:700;
+                            font-family:'Rajdhani',sans-serif;">{live_price:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+except:
+    pass
 def is_token_valid():
     try:
         token_data = load_token()
