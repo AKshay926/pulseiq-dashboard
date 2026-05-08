@@ -55,6 +55,7 @@ def initialize_database():
 
     conn.close()
 
+
 # =========================================================
 # SAVE SNAPSHOT
 # =========================================================
@@ -107,8 +108,10 @@ def save_oi_snapshot(
 
     conn.close()
 
+
 # =========================================================
 # LOAD TODAY HISTORY
+# SHOW ONLY MARKET HOURS (09:15 AM+)
 # =========================================================
 def load_today_history():
 
@@ -125,6 +128,7 @@ def load_today_history():
         FROM oi_history
 
         WHERE date(timestamp) = '{today}'
+        AND time(timestamp) >= '09:15:00'
 
         ORDER BY timestamp
     """
@@ -137,6 +141,7 @@ def load_today_history():
     conn.close()
 
     return df
+
 
 # =========================================================
 # LOAD FULL HISTORY
