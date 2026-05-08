@@ -1,6 +1,16 @@
 import pandas as pd
 from datetime import datetime
+# =====================================================
+# LOAD INSTRUMENTS
+# =====================================================
 
+def load_instruments(kite):
+
+    instruments = kite.instruments("NFO")
+
+    instruments_df = pd.DataFrame(instruments)
+
+    return instruments_df
 
 # =====================================================
 # FETCH OPTION CHAIN
