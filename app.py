@@ -730,8 +730,8 @@ if valid and st.session_state.load_clicked:
                 kite=kite,
                 instruments=instruments_df,
                 selected_index=selected_index,
-                num_strikes=num_strikes,
-                manual_atm=manual_strike if manual_strike != 0 else None,
+                strike_range=num_strikes,
+                custom_atm=manual_strike if manual_strike != 0 else 0,
             )
 
         save_oi_snapshot(
