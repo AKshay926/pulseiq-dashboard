@@ -1,3 +1,7 @@
+# =========================================================
+# database.py
+# =========================================================
+
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -46,7 +50,9 @@ def initialize_database():
 
             total_pe_oi REAL,
 
-            total_pcr REAL
+            total_pcr REAL,
+
+            index_name TEXT
         )
         """
     )
@@ -66,15 +72,16 @@ def save_oi_snapshot(
     total_ce_oi,
     total_pe_oi,
     total_pcr,
+    index_name,
 ):
 
     conn = sqlite3.connect(DB_FILE)
 
     cursor = conn.cursor()
 
-    # =====================================================
+    # -----------------------------------------------------
     # IST TIMESTAMP
-    # =====================================================
+    # -----------------------------------------------------
     timestamp = datetime.now(IST).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
@@ -88,11 +95,11 @@ def save_oi_snapshot(
             atm,
             total_ce_oi,
             total_pe_oi,
-            total_pcr
-
+            total_pcr,
+            index_name
         )
 
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             timestamp,
@@ -101,6 +108,7 @@ def save_oi_snapshot(
             total_ce_oi,
             total_pe_oi,
             total_pcr,
+            index_name,
         )
     )
 
@@ -111,9 +119,8 @@ def save_oi_snapshot(
 
 # =========================================================
 # LOAD TODAY HISTORY
-# SHOW ONLY MARKET HOURS (09:15 AM+)
 # =========================================================
-def load_today_history():
+def load_today_history(index_name):
 
     conn = sqlite3.connect(DB_FILE)
 
@@ -129,6 +136,7 @@ def load_today_history():
 
         WHERE date(timestamp) = '{today}'
         AND time(timestamp) >= '09:15:00'
+        AND index_name = '{index_name}'
 
         ORDER BY timestamp
     """
@@ -146,15 +154,17 @@ def load_today_history():
 # =========================================================
 # LOAD FULL HISTORY
 # =========================================================
-def load_full_history():
+def load_full_history(index_name):
 
     conn = sqlite3.connect(DB_FILE)
 
-    query = """
+    query = f"""
 
         SELECT *
 
         FROM oi_history
+
+        WHERE index_name = '{index_name}'
 
         ORDER BY timestamp
     """

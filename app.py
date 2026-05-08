@@ -638,10 +638,11 @@ if valid and st.session_state.load_clicked:
             total_ce_oi=live_data["total_ce_oi"],
             total_pe_oi=live_data["total_pe_oi"],
             total_pcr=live_data["total_pcr"],
+            index_name=selected_index,
         )
 
-        history_df      = load_today_history()
-        full_history_df = load_full_history()
+        history_df      = load_today_history(selected_index)
+        full_history_df = load_full_history(selected_index)
 
         tab1, tab2 = st.tabs(["📡 Live Dashboard", "📈 Historical Analytics"])
 
