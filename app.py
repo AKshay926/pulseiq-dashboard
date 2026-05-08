@@ -729,7 +729,7 @@ if valid and st.session_state.load_clicked:
             live_data = fetch_option_chain(
                 kite=kite,
                 instruments=instruments_df,
-                index_name=selected_index,
+                selected_index=selected_index,
                 num_strikes=num_strikes,
                 manual_atm=manual_strike if manual_strike != 0 else None,
             )
