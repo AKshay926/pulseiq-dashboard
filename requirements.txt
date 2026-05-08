@@ -1,0 +1,6 @@
+streamlit
+kiteconnect
+pandas
+plotly
+numpy
+streamlit-autorefresh
