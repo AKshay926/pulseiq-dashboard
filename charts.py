@@ -186,6 +186,26 @@ def plot_pcr_gauge(pcr):
 # =========================================================
 def plot_total_oi_trend(history_df, index_name="NIFTY"):
 
+    # =====================================================
+    # EMPTY CHECK
+    # =====================================================
+    if history_df.empty:
+        return go.Figure()
+
+    # =====================================================
+    # FIX BYTES ISSUE
+    # =====================================================
+    for col in history_df.columns:
+
+        if history_df[col].dtype == object:
+
+            history_df[col] = history_df[col].apply(
+                lambda x:
+                x.decode("latin-1", errors="ignore")
+                if isinstance(x, bytes)
+                else x
+            )
+
     fig = go.Figure()
 
     # -----------------------------------------------------

@@ -726,7 +726,8 @@ if valid and st.session_state.load_clicked:
         instruments_df = get_instruments()
 
         with st.spinner("Fetching live option chain..."):
-            live_data = fetch_option_chain(
+
+            option_df, spot_price, atm_strike, expiry = fetch_option_chain(
                 kite=kite,
                 instruments=instruments_df,
                 selected_index=selected_index,
@@ -734,57 +735,131 @@ if valid and st.session_state.load_clicked:
                 custom_atm=manual_strike if manual_strike != 0 else 0,
             )
 
+            total_ce_oi = option_df["CE_OI"].sum()
+            total_pe_oi = option_df["PE_OI"].sum()
+
+            total_pcr = round(
+                total_pe_oi / total_ce_oi,
+                2
+            ) if total_ce_oi != 0 else 0
+
+            live_data = {
+                "data": option_df,
+                "spot": spot_price,
+                "atm": atm_strike,
+                "expiry": expiry,
+                "total_ce_oi": total_ce_oi,
+                "total_pe_oi": total_pe_oi,
+                "total_pcr": total_pcr,
+                "timestamp": datetime.now(),
+            }
+
         save_oi_snapshot(
-            spot=live_data["spot"],
-            atm=live_data["atm"],
-            total_ce_oi=live_data["total_ce_oi"],
-            total_pe_oi=live_data["total_pe_oi"],
-            total_pcr=live_data["total_pcr"],
-            index_name=selected_index,
+            spot=float(live_data["spot"]),
+            atm=float(live_data["atm"]),
+            total_ce_oi=float(live_data["total_ce_oi"]),
+            total_pe_oi=float(live_data["total_pe_oi"]),
+            total_pcr=float(live_data["total_pcr"]),
+            index_name=str(selected_index),
         )
 
-        history_df      = load_today_history(selected_index)
+        history_df = load_today_history(selected_index)
         full_history_df = load_full_history(selected_index)
 
-        tab1, tab2 = st.tabs(["📡 Live Dashboard", "📈 Historical Analytics"])
+        tab1, tab2 = st.tabs(
+            ["📡 Live Dashboard", "📈 Historical Analytics"]
+        )
 
         with tab1:
-            # ── 6 metric cards including live price change ──
-            metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
-            metric1.metric(f"{selected_index} Spot", f"{live_data['spot']:,.2f}")
-            metric2.metric("ATM",   live_data["atm"])
-            metric3.metric("PCR",   live_data["total_pcr"])
-            metric4.metric("CE OI", f"{round(live_data['total_ce_oi']/1e7, 2)} Cr")
-            metric5.metric("PE OI", f"{round(live_data['total_pe_oi']/1e7, 2)} Cr")
 
-            # Live index price change from history
-            if not history_df.empty and "spot" in history_df.columns and len(history_df) > 1:
-                open_price  = history_df["spot"].iloc[0]
-                live_price  = live_data["spot"]
-                price_delta = round(live_price - open_price, 2)
-                metric6.metric("Day Change", f"{live_price:,.2f}", delta=f"{price_delta:+.2f}")
+            metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
+
+            metric1.metric(
+                f"{selected_index} Spot",
+                f"{live_data['spot']:,.2f}"
+            )
+
+            metric2.metric(
+                "ATM",
+                live_data["atm"]
+            )
+
+            metric3.metric(
+                "PCR",
+                live_data["total_pcr"]
+            )
+
+            metric4.metric(
+                "CE OI",
+                f"{round(live_data['total_ce_oi']/1e7, 2)} Cr"
+            )
+
+            metric5.metric(
+                "PE OI",
+                f"{round(live_data['total_pe_oi']/1e7, 2)} Cr"
+            )
+
+            if (
+                not history_df.empty
+                and "spot" in history_df.columns
+                and len(history_df) > 1
+            ):
+
+                open_price = history_df["spot"].iloc[0]
+
+                live_price = live_data["spot"]
+
+                price_delta = round(
+                    live_price - open_price,
+                    2
+                )
+
+                metric6.metric(
+                    "Day Change",
+                    f"{live_price:,.2f}",
+                    delta=f"{price_delta:+.2f}"
+                )
+
             else:
-                metric6.metric("Day Change", f"{live_data['spot']:,.2f}")
+
+                metric6.metric(
+                    "Day Change",
+                    f"{live_data['spot']:,.2f}"
+                )
 
             st.markdown("---")
+
             chart_col1, chart_col2 = st.columns([3, 1])
+
             with chart_col1:
+
                 st.subheader("📈 Strike-wise OI")
+
                 st.plotly_chart(
-                    plot_oi_chart(live_data["data"], live_data["atm"]),
+                    plot_oi_chart(
+                        live_data["data"],
+                        live_data["atm"]
+                    ),
                     use_container_width=True,
                     key="live_oi_chart",
                 )
+
             with chart_col2:
+
                 st.subheader("📊 PCR")
+
                 st.plotly_chart(
-                    plot_pcr_gauge(live_data["total_pcr"]),
+                    plot_pcr_gauge(
+                        live_data["total_pcr"]
+                    ),
                     use_container_width=True,
                     key="pcr_gauge_chart",
                 )
 
             st.markdown("---")
+
             st.subheader("📋 Live Option Chain")
+
             st.dataframe(
                 live_data["data"],
                 use_container_width=True,
@@ -793,8 +868,9 @@ if valid and st.session_state.load_clicked:
             )
 
             st.markdown("---")
-            # Only Today's Trend — historical removed
+
             st.subheader("📈 Today's OI Trend")
+
             st.plotly_chart(
                 plot_total_oi_trend(history_df),
                 use_container_width=True,
@@ -802,7 +878,9 @@ if valid and st.session_state.load_clicked:
             )
 
         with tab2:
+
             st.subheader("📋 Historical Data")
+
             st.dataframe(
                 full_history_df,
                 use_container_width=True,
@@ -812,24 +890,48 @@ if valid and st.session_state.load_clicked:
 
         st.markdown("---")
 
-        # Build CSV with totals row appended
+        # =====================================================
+        # BUILD CSV
+        # =====================================================
+
         df_csv = live_data["data"].copy()
-        totals = {}
+
+        # FIX BYTES ISSUE
         for col in df_csv.columns:
+
+            if df_csv[col].dtype == object:
+
+                df_csv[col] = df_csv[col].apply(
+                    lambda x:
+                    x.decode("latin-1", errors="ignore")
+                    if isinstance(x, bytes)
+                    else x
+                )
+
+        totals = {}
+
+        for col in df_csv.columns:
+
             if df_csv[col].dtype in ["float64", "int64"]:
+
                 totals[col] = df_csv[col].sum()
+
             else:
+
                 totals[col] = "TOTAL"
+
         df_csv = pd.concat(
-            [df_csv, pd.DataFrame([totals])], ignore_index=True
+            [df_csv, pd.DataFrame([totals])],
+            ignore_index=True
         )
 
         st.download_button(
             "⬇ Download Option Chain CSV",
-            df_csv.to_csv(index=False),
+            df_csv.to_csv(index=False).encode("utf-8"),
             file_name=f"{selected_index}_option_chain_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
             mime="text/csv",
         )
+
         st.caption(
             f"Last Updated: {live_data['timestamp'].strftime('%d-%b-%Y %H:%M:%S')}"
         )
@@ -838,7 +940,7 @@ if valid and st.session_state.load_clicked:
         st.error(f"Error: {e}")
 
 elif not valid:
-    st.warning("Please authenticate using Kite →  use the sidebar")
+    st.warning("Please authenticate using Kite → use the sidebar")
 
 else:
     st.info("Select settings and click '⚡ Load Data'")
