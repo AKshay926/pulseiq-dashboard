@@ -16,7 +16,8 @@ from charts import (
     plot_oi_chart,
     plot_pcr_gauge,
     plot_total_oi_trend,
-)
+    plot_spot_trend,
+    )
 
 from database import (
     initialize_database,
@@ -696,6 +697,30 @@ if valid and st.session_state.load_clicked:
                 use_container_width=True,
                 key="today_trend_chart",
             )
+
+                                    # =====================================================
+            # LIVE INDEX PRICE TREND
+            # =====================================================
+            st.markdown("---")
+
+            st.subheader(f"📊 {selected_index} Live Price Trend")
+
+            if not history_df.empty:
+
+                spot_fig = plot_spot_trend(
+                    history_df,
+                    selected_index
+                )
+
+                st.plotly_chart(
+                    spot_fig,
+                    use_container_width=True,
+                    key=f"spot_trend_{selected_index}"
+                )
+
+            else:
+
+                st.info("No live price history available yet.")          
 
         with tab2:
             st.subheader("📋 Historical Data")
