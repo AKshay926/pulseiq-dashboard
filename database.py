@@ -146,6 +146,12 @@ def load_today_history(index_name):
         conn
     )
 
+    # =====================================================
+    # FIX JSON SERIALIZATION
+    # =====================================================
+    if "timestamp" in df.columns:
+        df["timestamp"] = df["timestamp"].astype(str)
+
     conn.close()
 
     return df
@@ -173,6 +179,12 @@ def load_full_history(index_name):
         query,
         conn
     )
+
+    # =====================================================
+    # FIX JSON SERIALIZATION
+    # =====================================================
+    if "timestamp" in df.columns:
+        df["timestamp"] = df["timestamp"].astype(str)
 
     conn.close()
 
