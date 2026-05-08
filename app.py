@@ -16,8 +16,7 @@ from charts import (
     plot_oi_chart,
     plot_pcr_gauge,
     plot_total_oi_trend,
-    
-    )
+)
 
 from database import (
     initialize_database,
@@ -427,7 +426,7 @@ st.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-    
+
 # =====================================================
 # CONFIG
 # =====================================================
@@ -520,40 +519,7 @@ def get_kite():
     if token_data:
         kite.set_access_token(token_data["access_token"])
     return kite
-# =====================================================
-# LIVE MARKET TICKER
-# =====================================================
-try:
-    kite = get_kite()
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    ticker_cols = st.columns(6)
-    market_symbols = {
-        "NIFTY":      "NSE:NIFTY 50",
-        "BANKNIFTY":  "NSE:NIFTY BANK",
-        "FINNIFTY":   "NSE:NIFTY FIN SERVICE",
-        "MIDCPNIFTY": "NSE:NIFTY MID SELECT",
-        "SENSEX":     "BSE:SENSEX",
-        "BANKEX":     "BSE:BANKEX",
-    }
-
-    ticker_quotes = kite.ltp(list(market_symbols.values()))
-
-    for i, (name, symbol) in enumerate(market_symbols.items()):
-        live_price = ticker_quotes[symbol]["last_price"]
-        with ticker_cols[i]:
-            st.markdown(f"""
-            <div style="background:#041208;border:1px solid #00ff6630;border-radius:14px;
-                        padding:14px;text-align:center;box-shadow:0 0 12px #00ff6615;">
-                <div style="color:#00ff66;font-size:11px;letter-spacing:0.14em;
-                            margin-bottom:7px;font-family:'Rajdhani',sans-serif;
-                            text-transform:uppercase;">{name}</div>
-                <div style="color:#eafff0;font-size:24px;font-weight:700;
-                            font-family:'Rajdhani',sans-serif;">{live_price:,.2f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-except:
-    pass
 def is_token_valid():
     try:
         token_data = load_token()
@@ -589,6 +555,109 @@ st.markdown(
     f"⚡ {selected_index} — Options OI Dashboard</p>",
     unsafe_allow_html=True,
 )
+
+# =====================================================
+# MARKET STATUS
+# =====================================================
+import pytz
+_ist = pytz.timezone("Asia/Kolkata")
+_now = datetime.now(_ist)
+_weekday = _now.weekday()
+_t = _now.time()
+_market_open = (
+    _weekday < 5 and
+    _t >= datetime.strptime("09:15", "%H:%M").time() and
+    _t <= datetime.strptime("15:30", "%H:%M").time()
+)
+
+if _market_open:
+    st.markdown("""
+    <div style="display:inline-flex;align-items:center;gap:8px;
+                background:#001a0a;border:1px solid #00ff6644;
+                border-radius:8px;padding:5px 14px;margin-bottom:0.8rem;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#39ff14;
+                     box-shadow:0 0 8px #39ff14;display:inline-block;
+                     animation:blink 1s ease-in-out infinite;"></span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:12px;
+                     letter-spacing:0.18em;color:#39ff14;text-transform:uppercase;">
+            Market Open
+        </span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:11px;
+                     color:#00ff6677;letter-spacing:0.1em;">
+            NSE · 09:15 – 15:30 IST
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    # Determine reason
+    if _weekday >= 5:
+        reason = "Weekend"
+    elif _t < datetime.strptime("09:15", "%H:%M").time():
+        reason = "Pre-Market"
+    else:
+        reason = "After Hours"
+
+    st.markdown(f"""
+    <div style="display:inline-flex;align-items:center;gap:8px;
+                background:#1a0000;border:1px solid #ff444433;
+                border-radius:8px;padding:5px 14px;margin-bottom:0.8rem;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#ff4444;
+                     box-shadow:0 0 8px #ff4444;display:inline-block;"></span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:12px;
+                     letter-spacing:0.18em;color:#ff4444;text-transform:uppercase;">
+            Market Closed
+        </span>
+        <span style="font-family:'Rajdhani',sans-serif;font-size:11px;
+                     color:#ff444477;letter-spacing:0.1em;">
+            {reason} · Opens Mon–Fri 09:15 IST
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+# =====================================================
+# LIVE INDEX PRICES TICKER
+# =====================================================
+MARKET_SYMBOLS = {
+    "NIFTY":      "NSE:NIFTY 50",
+    "BANKNIFTY":  "NSE:NIFTY BANK",
+    "FINNIFTY":   "NSE:NIFTY FIN SERVICE",
+    "MIDCPNIFTY": "NSE:NIFTY MID SELECT",
+    "SENSEX":     "BSE:SENSEX",
+    "BANKEX":     "BSE:BANKEX",
+}
+
+try:
+    _kite         = get_kite()
+    ticker_quotes = _kite.ltp(list(MARKET_SYMBOLS.values()))
+    ticker_cols   = st.columns(6)
+
+    for i, (name, symbol) in enumerate(MARKET_SYMBOLS.items()):
+        price = ticker_quotes.get(symbol, {}).get("last_price", 0)
+        # Highlight the currently selected index
+        is_selected  = name == selected_index
+        border_color = "#00ff66aa" if is_selected else "#00ff6630"
+        glow         = "0 0 18px #00ff6633" if is_selected else "0 0 8px #00ff6610"
+        name_color   = "#39ff14"   if is_selected else "#00ff66"
+
+        with ticker_cols[i]:
+            st.markdown(f"""
+            <div style="background:#041208;border:1px solid {border_color};
+                        border-radius:14px;padding:14px;text-align:center;
+                        box-shadow:{glow};">
+                <div style="color:{name_color};font-size:11px;letter-spacing:0.14em;
+                            margin-bottom:7px;font-family:'Rajdhani',sans-serif;
+                            text-transform:uppercase;">{name}</div>
+                <div style="color:#eafff0;font-size:22px;font-weight:700;
+                            font-family:'Rajdhani',sans-serif;">
+                    {price:,.2f}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+except Exception:
+    pass
+
+st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
 # =====================================================
 # AUTH VALIDATION
@@ -727,13 +796,11 @@ if valid and st.session_state.load_clicked:
             # Only Today's Trend — historical removed
             st.subheader("📈 Today's OI Trend")
             st.plotly_chart(
-                plot_total_oi_trend(history_df,
-    selected_index),
+                plot_total_oi_trend(history_df),
                 use_container_width=True,
                 key="today_trend_chart",
             )
 
-        
         with tab2:
             st.subheader("📋 Historical Data")
             st.dataframe(
