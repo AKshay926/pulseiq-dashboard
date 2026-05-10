@@ -36,6 +36,46 @@ st.set_page_config(
 )
 
 # =====================================================
+# AUTO SHOW REQUEST TOKEN
+# =====================================================
+
+query_params = st.query_params
+
+request_token = query_params.get(
+    "request_token",
+    None
+)
+
+if request_token:
+
+    st.markdown(
+        """
+        <div style='
+            background:#07140d;
+            border:1px solid #00ff66;
+            padding:25px;
+            border-radius:15px;
+            margin-bottom:20px;
+        '>
+
+        <h2 style='color:#00ff66;'>
+            🔑 Request Token Detected
+        </h2>
+
+        <p style='color:#a0ffb8;'>
+            Copy this token and paste into login box.
+        </p>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.code(request_token)
+
+    st.success("✅ Token Ready To Copy")
+
+# =====================================================
 # CUSTOM CSS — HERO + SIDEBAR
 # =====================================================
 st.markdown("""
