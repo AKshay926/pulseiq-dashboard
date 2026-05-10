@@ -38,9 +38,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-send_telegram_alert(
-    "✅ PulseIQ Telegram Alerts Working"
-)
+
 
 # =====================================================
 # AUTO SHOW REQUEST TOKEN
