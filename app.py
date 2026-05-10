@@ -25,6 +25,10 @@ from database import (
     load_full_history,
 )
 
+from ai_engine import generate_ai_signal
+
+from alerts import send_telegram_alert
+
 # =====================================================
 # PAGE CONFIG
 # =====================================================
@@ -33,6 +37,9 @@ st.set_page_config(
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+send_telegram_alert(
+    "✅ PulseIQ Telegram Alerts Working"
 )
 
 # =====================================================
@@ -806,6 +813,28 @@ if valid and st.session_state.load_clicked:
         history_df = load_today_history(selected_index)
         full_history_df = load_full_history(selected_index)
 
+        # =====================================================
+        # AI SIGNAL
+        # =====================================================
+
+        signal_data = generate_ai_signal(
+            spot_price=live_data["spot"],
+
+            previous_spot=history_df["spot"].iloc[-2]
+            if len(history_df) > 1
+            else live_data["spot"],
+
+            total_pcr=live_data["total_pcr"],
+
+            total_ce_oi=live_data["total_ce_oi"],
+
+            total_pe_oi=live_data["total_pe_oi"],
+
+            atm_ce_volume=live_data["data"]["CE_VOLUME"].max(),
+
+            atm_pe_volume=live_data["data"]["PE_VOLUME"].max(),
+        )
+
         tab1, tab2 = st.tabs(
             ["📡 Live Dashboard", "📈 Historical Analytics"]
         )
@@ -838,6 +867,66 @@ if valid and st.session_state.load_clicked:
                 "PE OI",
                 f"{round(live_data['total_pe_oi']/1e7, 2)} Cr"
             )
+
+            # =====================================================
+            # AI SIGNAL BOX
+            # =====================================================
+
+            st.markdown("---")
+
+            st.subheader("🤖 AI Trade Signal")
+
+            signal = signal_data["signal"]
+
+            # =====================================================
+            # TELEGRAM ALERTS
+            # =====================================================
+
+            if "last_signal" not in st.session_state:
+
+                st.session_state.last_signal = None
+
+            if signal != st.session_state.last_signal:
+
+                alert_message = f"""
+
+📡 PulseIQ Alert
+
+Index: {selected_index}
+
+Signal: {signal}
+
+PCR: {live_data['total_pcr']}
+
+Spot: {live_data['spot']}
+
+Time: {datetime.now().strftime('%H:%M:%S')}
+
+"""
+
+                send_telegram_alert(alert_message)
+
+                st.session_state.last_signal = signal
+
+            confidence = signal_data["confidence"]
+
+            if signal == "BUY CALL":
+
+                st.success(
+                    f"📈 {signal} | Confidence: {confidence}"
+                )
+
+            elif signal == "BUY PUT":
+
+                st.error(
+                    f"📉 {signal} | Confidence: {confidence}"
+                )
+
+            else:
+
+                st.warning(
+                    f"⚠️ {signal} | Confidence: {confidence}"
+                )
 
             if (
                 not history_df.empty
@@ -936,7 +1025,6 @@ if valid and st.session_state.load_clicked:
 
         df_csv = live_data["data"].copy()
 
-        # FIX BYTES ISSUE
         for col in df_csv.columns:
 
             if df_csv[col].dtype == object:
