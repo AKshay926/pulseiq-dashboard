@@ -616,7 +616,7 @@ _market_open = (
 )
 
 if _market_open:
-    st.markdown("""
+    st.markdown(f"""
     <div style="display:inline-flex;align-items:center;gap:8px;
                 background:#001a0a;border:1px solid #00ff6644;
                 border-radius:8px;padding:5px 14px;margin-bottom:0.8rem;">
