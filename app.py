@@ -725,6 +725,7 @@ if not valid:
 
     request_token = st.sidebar.text_input(
         "Enter request_token",
+        value=request_token if request_token else "",
         type="password",
         placeholder="Paste token here...",
     )
