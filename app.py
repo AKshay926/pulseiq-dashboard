@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import streamlit.components.v1 as components
 from datetime import datetime
 
 from kiteconnect import KiteConnect
@@ -616,23 +617,66 @@ _market_open = (
 )
 
 if _market_open:
-    st.markdown(f"""
-    <div style="display:inline-flex;align-items:center;gap:8px;
-                background:#001a0a;border:1px solid #00ff6644;
-                border-radius:8px;padding:5px 14px;margin-bottom:0.8rem;">
-        <span style="width:8px;height:8px;border-radius:50%;background:#39ff14;
-                     box-shadow:0 0 8px #39ff14;display:inline-block;
-                     animation:blink 1s ease-in-out infinite;"></span>
-        <span style="font-family:'Rajdhani',sans-serif;font-size:12px;
-                     letter-spacing:0.18em;color:#39ff14;text-transform:uppercase;">
-            Market Open
-        </span>
-        <span style="font-family:'Rajdhani',sans-serif;font-size:11px;
-                     color:#00ff6677;letter-spacing:0.1em;">
-           {_now.strftime("%I:%M:%S %p")}
-        </span>
+    components.html("""
+    <link href="https://fonts.googleapis.com/css2?family=Radhani:wght@500;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    .market-bar{display:inline-flex;align-items:center;gap:18px;background:linear-gradient(135deg,#001a0a 0%,#00110a 100%);border:1px solid #00ff6633;border-radius:12px;padding:10px 20px;position:relative;overflow:hidden}
+    .market-bar::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,#00ff6666,transparent)}
+    .live-dot{width:8px;height:8px;border-radius:50%;background:#00ff66;box-shadow:0 0 10px #00ff66;position:relative;animation:pd 1.5s ease-in-out infinite}
+    .live-dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid #00ff6644;animation:re 1.5s ease-out infinite}
+    @keyframes pd{0%,100%{box-shadow:0 0 6px #00ff66}50%{box-shadow:0 0 16px #00ff66cc}}
+    @keyframes re{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.5);opacity:0}}
+    .live-wrap{display:flex;align-items:center;gap:7px}
+    .live-lbl{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:#00ff66}
+    .vdiv{width:1px;height:28px;background:linear-gradient(to bottom,transparent,#00ff6644,transparent)}
+    .mkt-status{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#00cc44}
+    .clock-wrap{display:flex;align-items:baseline;gap:4px}
+    .clock-time{font-family:'Radhani',monospace;font-size:14px;font-weight:700;color:#e8fff0;letter-spacing:.06em;text-shadow:0 0 14px #00ff6655;min-width:96px}
+    .colon{color:#00ff66;animation:cb 1s step-end infinite}
+    @keyframes cb{0%,100%{opacity:1}50%{opacity:.2}}
+    .clock-ampm{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:.15em;color:#39ff14}
+    .clock-ist{font-family:'Rajdhani',sans-serif;font-size:10px;letter-spacing:.2em;color:#00ff6677;margin-left:2px}
+    .nse-badge{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;color:#00cc44;border:1px solid #00ff6633;background:#00ff660d;border-radius:5px;padding:2px 8px}
+    .session-wrap{display:flex;flex-direction:column;gap:3px}
+    .session-label{font-family:'Rajdhani',sans-serif;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#00ff6655}
+    .session-bar{width:100px;height:4px;background:#00ff6618;border-radius:4px;overflow:hidden}
+    .session-fill{height:100%;background:linear-gradient(to right,#00cc44,#39ff14);border-radius:4px;box-shadow:0 0 6px #00ff6666;transition:width 1s linear}
+    </style>
+    <div class="market-bar">
+      <div class="live-wrap"><div class="live-dot"></div><span class="live-lbl">Live</span></div>
+      <div class="vdiv"></div>
+      <span class="mkt-status">Market Open</span>
+      <div class="vdiv"></div>
+      <div class="clock-wrap">
+        <span class="clock-time" id="ct">--<span class="colon">:</span>--<span class="colon">:</span>--</span>
+        <span class="clock-ampm" id="ap">--</span>
+        <span class="clock-ist">IST</span>
+      </div>
+      <div class="vdiv"></div>
+      <div class="session-wrap">
+        <span class="session-label">Session</span>
+        <div class="session-bar"><div class="session-fill" id="sf" style="width:0%"></div></div>
+      </div>
+      <div class="vdiv"></div>
+      <span class="nse-badge">NSE · NFO</span>
     </div>
-    """, unsafe_allow_html=True)
+    <script>
+    function tick(){
+      const now=new Date();
+      const ist=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Kolkata"}));
+      let h=ist.getHours(),m=ist.getMinutes(),s=ist.getSeconds();
+      const ap=h>=12?"PM":"AM"; h=h%12||12;
+      const p=n=>String(n).padStart(2,"0");
+      document.getElementById("ct").innerHTML=`${p(h)}<span class="colon">:</span>${p(m)}<span class="colon">:</span>${p(s)}`;
+      document.getElementById("ap").textContent=ap;
+      const nowMin=ist.getHours()*60+ist.getMinutes()+ist.getSeconds()/60;
+      const pct=Math.max(0,Math.min((nowMin-555)/375*100,100)).toFixed(2);
+      document.getElementById("sf").style.width=pct+"%";
+    }
+    setInterval(tick,1000); tick();
+    </script>
+    """, height=60)
 else:
     # Determine reason
     if _weekday >= 5:
