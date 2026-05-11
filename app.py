@@ -629,7 +629,7 @@ if _market_open:
         </span>
         <span style="font-family:'Rajdhani',sans-serif;font-size:11px;
                      color:#00ff6677;letter-spacing:0.1em;">
-            NSE · 09:15 – 15:30 IST
+           {_now.strftime("%I:%M:%S %p")}
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -654,7 +654,7 @@ else:
         </span>
         <span style="font-family:'Rajdhani',sans-serif;font-size:11px;
                      color:#ff444477;letter-spacing:0.1em;">
-            {reason} · Opens Mon–Fri 09:15 IST
+             {reason} · {_now.strftime("%I:%M:%S %p")} IST
         </span>
     </div>
     """, unsafe_allow_html=True)
