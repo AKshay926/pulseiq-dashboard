@@ -888,7 +888,7 @@ if valid and st.session_state.load_clicked:
 
                 st.stop()
 
-        save_oi_snapshot(
+            save_oi_snapshot(
             spot=float(live_data["spot"]),
             atm=float(live_data["atm"]),
             total_ce_oi=float(live_data["total_ce_oi"]),
@@ -897,15 +897,14 @@ if valid and st.session_state.load_clicked:
             index_name=str(selected_index),
         )
 
-            history_df = load_today_history(selected_index)
-            full_history_df = load_full_history(selected_index)
+        history_df = load_today_history(selected_index)
+        full_history_df = load_full_history(selected_index)
 
-            if history_df is None:
-                history_df = pd.DataFrame()
+        if history_df is None:
+            history_df = pd.DataFrame()
 
-            if full_history_df is None:
-                full_history_df = pd.DataFrame()
-
+        if full_history_df is None:
+            full_history_df = pd.DataFrame()
         # =====================================================
         # AI SIGNAL
         # =====================================================
