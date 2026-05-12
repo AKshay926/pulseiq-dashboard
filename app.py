@@ -533,7 +533,7 @@ refresh_seconds = st.sidebar.selectbox(
     index=3,
 )
 
-st_autorefresh(interval=refresh_seconds * 1000, key="nifty_refresh")
+
 
 st.sidebar.markdown("---")
 
@@ -706,6 +706,12 @@ else:
 # =====================================================
 # LIVE INDEX PRICES TICKER
 # =====================================================
+st_autorefresh(
+    interval=5000,
+    key="ticker_refresh"
+)
+
+
 MARKET_SYMBOLS = {
     "NIFTY":      "NSE:NIFTY 50",
     "BANKNIFTY":  "NSE:NIFTY BANK",
@@ -922,146 +928,54 @@ if valid and st.session_state.load_clicked:
             signal = signal_data["signal"]
 
             # =====================================================
-            # TELEGRAM ALERTS
-            # =====================================================
+# TELEGRAM ALERTS
+# =====================================================
 
-            if "last_signal" not in st.session_state:
+if "last_signal" not in st.session_state:
 
-                st.session_state.last_signal = None
+    st.session_state.last_signal = None
 
-            if signal != st.session_state.last_signal:
+if signal != st.session_state.last_signal:
 
-                alert_message = f"""
+    atm_row = live_data["data"][
+        live_data["data"]["STRIKE"] == live_data["atm"]
+    ]
 
-📡 PulseIQ Alert
+    atm_ce_oi = (
+        atm_row["CE_OI"].iloc[0]
+        if not atm_row.empty else 0
+    )
+
+    atm_pe_oi = (
+        atm_row["PE_OI"].iloc[0]
+        if not atm_row.empty else 0
+    )
+
+    alert_message = f"""
+
+🚀 PulseIQ Premium Signals
 
 Index: {selected_index}
 
 Signal: {signal}
 
+ATM Strike: {live_data['atm']}
+
 PCR: {live_data['total_pcr']}
 
-Spot: {live_data['spot']}
+Spot: {live_data['spot']:,.2f}
 
-Time: {datetime.now().strftime('%H:%M:%S')}
+ATM CE OI: {round(atm_ce_oi/1e5, 2)} L
+
+ATM PE OI: {round(atm_pe_oi/1e5, 2)} L
+
+Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
 
 """
 
-                send_telegram_alert(alert_message)
+    send_telegram_alert(alert_message)
 
-                st.session_state.last_signal = signal
-
-            confidence = signal_data["confidence"]
-
-            if signal == "BUY CALL":
-
-                st.success(
-                    f"📈 {signal} | Confidence: {confidence}"
-                )
-
-            elif signal == "BUY PUT":
-
-                st.error(
-                    f"📉 {signal} | Confidence: {confidence}"
-                )
-
-            else:
-
-                st.warning(
-                    f"⚠️ {signal} | Confidence: {confidence}"
-                )
-
-            if (
-                not history_df.empty
-                and "spot" in history_df.columns
-                and len(history_df) > 1
-            ):
-
-                open_price = history_df["spot"].iloc[0]
-
-                live_price = live_data["spot"]
-
-                price_delta = round(
-                    live_price - open_price,
-                    2
-                )
-
-                metric6.metric(
-                    "Day Change",
-                    f"{live_price:,.2f}",
-                    delta=f"{price_delta:+.2f}"
-                )
-
-            else:
-
-                metric6.metric(
-                    "Day Change",
-                    f"{live_data['spot']:,.2f}"
-                )
-
-            st.markdown("---")
-
-            chart_col1, chart_col2 = st.columns([3, 1])
-
-            with chart_col1:
-
-                st.subheader("📈 Strike-wise OI")
-
-                st.plotly_chart(
-                    plot_oi_chart(
-                        live_data["data"],
-                        live_data["atm"]
-                    ),
-                    use_container_width=True,
-                    key="live_oi_chart",
-                )
-
-            with chart_col2:
-
-                st.subheader("📊 PCR")
-
-                st.plotly_chart(
-                    plot_pcr_gauge(
-                        live_data["total_pcr"]
-                    ),
-                    use_container_width=True,
-                    key="pcr_gauge_chart",
-                )
-
-            st.markdown("---")
-
-            st.subheader("📋 Live Option Chain")
-
-            st.dataframe(
-                live_data["data"],
-                use_container_width=True,
-                hide_index=True,
-                height=420,
-            )
-
-            st.markdown("---")
-
-            st.subheader("📈 Today's OI Trend")
-
-            st.plotly_chart(
-                plot_total_oi_trend(history_df),
-                use_container_width=True,
-                key="today_trend_chart",
-            )
-
-        with tab2:
-
-            st.subheader("📋 Historical Data")
-
-            st.dataframe(
-                full_history_df,
-                use_container_width=True,
-                hide_index=True,
-                height=700,
-            )
-
-        st.markdown("---")
-
+    st.session_state.last_signal = signal
         # =====================================================
         # BUILD CSV
         # =====================================================
