@@ -706,10 +706,7 @@ else:
 # =====================================================
 # LIVE INDEX PRICES TICKER
 # =====================================================
-st_autorefresh(
-    interval=5000,
-    key="ticker_refresh"
-)
+
 
 
 MARKET_SYMBOLS = {
@@ -936,16 +933,26 @@ if valid and st.session_state.load_clicked:
             # =====================================================
             # TELEGRAM ALERTS
             # =====================================================
-
-            if "last_signal" not in st.session_state:
-
-                st.session_state.last_signal = None
-
             if signal != st.session_state.last_signal:
 
-                atm_row = live_data["data"][
-                    live_data["data"]["STRIKE"] == live_data["atm"]
-                ]
+                strike_col = None
+
+                for col in live_data["data"].columns:
+
+                    if col.upper() == "STRIKE":
+
+                        strike_col = col
+                        break
+
+                if strike_col:
+
+                    atm_row = live_data["data"][
+                        live_data["data"][strike_col] == live_data["atm"]
+                    ]
+
+                else:
+
+                    atm_row = pd.DataFrame()
 
                 atm_ce_oi = (
                     atm_row["CE_OI"].iloc[0]
