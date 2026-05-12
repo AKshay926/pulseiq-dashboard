@@ -40,7 +40,30 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown("""
+<style>
 
+[data-testid="stMetricValue"] {
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.1rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem;
+    }
+
+    .stDataFrame {
+        font-size: 11px;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
 # =====================================================
 # AUTO SHOW REQUEST TOKEN
 # =====================================================
@@ -933,7 +956,8 @@ if valid and st.session_state.load_clicked:
 
         with tab1:
 
-            metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
+            metric1, metric2, metric3 = st.columns(3)
+            metric4, metric5, metric6 = st.columns(3)
 
             metric1.metric(
                 f"{selected_index} Spot",
@@ -1111,6 +1135,7 @@ Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
                     ),
                     use_container_width=True,
                     key="live_oi_chart",
+                    config={"displayModeBar": False},
                 )
 
             with chart_col2:
@@ -1123,6 +1148,8 @@ Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
                     ),
                     use_container_width=True,
                     key="pcr_gauge_chart",
+                    config={"displayModeBar": False},
+
                 )
 
             st.markdown("---")
@@ -1133,7 +1160,7 @@ Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
                 live_data["data"],
                 use_container_width=True,
                 hide_index=True,
-                height=420,
+                height=320,
             )
 
             st.markdown("---")
@@ -1144,6 +1171,7 @@ Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
                 plot_total_oi_trend(history_df),
                 use_container_width=True,
                 key="today_trend_chart",
+                config={"displayModeBar": False},
             )
 
         with tab2:

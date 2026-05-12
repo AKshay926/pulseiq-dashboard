@@ -59,7 +59,7 @@ def plot_oi_chart(df, atm):
 
         yaxis_title="Open Interest",
 
-        height=500,
+        height=420,
 
         template="plotly_dark",
 
@@ -78,12 +78,18 @@ def plot_oi_chart(df, atm):
         ),
 
         legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
             bgcolor="#020f06",
             bordercolor="#00ff66",
             borderwidth=1,
-            font=dict(color="#a0ffb8"),
+            font=dict(
+             color="#a0ffb8"
+            ),
         ),
-
         xaxis=dict(
             gridcolor="rgba(0,255,102,0.08)"
         ),
@@ -294,7 +300,7 @@ def plot_total_oi_trend(history_df, index_name="NIFTY"):
             showgrid=False,
         ),
 
-        height=550,
+        height=450,
 
         template="plotly_dark",
 
@@ -314,10 +320,13 @@ def plot_total_oi_trend(history_df, index_name="NIFTY"):
 
         legend=dict(
 
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
             bgcolor="#020f06",
-
             bordercolor="#00ff66",
-
             borderwidth=1,
 
             font=dict(
