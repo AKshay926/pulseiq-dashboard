@@ -533,9 +533,24 @@ refresh_seconds = st.sidebar.selectbox(
     index=3,
 )
 
+alert_interval_minutes = st.sidebar.selectbox(
+    "Telegram Alert Interval (min)",
+    [1, 3, 5, 10, 15, 30],
+    index=1,
+)
 
+# =====================================================
+# GLOBAL AUTO REFRESH
+# =====================================================
+
+st_autorefresh(
+    interval=10 * 1000,
+    key="app_refresh"
+)
 
 st.sidebar.markdown("---")
+
+
 
 if "load_clicked" not in st.session_state:
     st.session_state.load_clicked = False
@@ -810,48 +825,68 @@ if valid:
 
 if valid and st.session_state.load_clicked:
 
-    st_autorefresh(
-        interval=refresh_seconds * 1000,
-        key="dashboard_refresh"
+    now_ts = datetime.now()
+
+    last_fetch = st.session_state.get("last_fetch_time")
+
+    should_fetch = (
+        last_fetch is None or
+        (now_ts - last_fetch).total_seconds() >= refresh_seconds
     )
 
     try:
-        kite = get_kite()
 
-        @st.cache_data(ttl=3600)
-        def get_instruments():
-            return load_instruments(kite)
+        if should_fetch:
 
-        instruments_df = get_instruments()
+            kite = get_kite()
 
-        with st.spinner("Fetching live option chain..."):
+            @st.cache_data(ttl=3600)
+            def get_instruments():
+                return load_instruments(kite)
 
-            option_df, spot_price, atm_strike, expiry = fetch_option_chain(
-                kite=kite,
-                instruments=instruments_df,
-                selected_index=selected_index,
-                strike_range=num_strikes,
-                custom_atm=manual_strike if manual_strike != 0 else 0,
-            )
+            instruments_df = get_instruments()
 
-            total_ce_oi = option_df["CE_OI"].sum()
-            total_pe_oi = option_df["PE_OI"].sum()
+            with st.spinner("Fetching live option chain..."):
 
-            total_pcr = round(
-                total_pe_oi / total_ce_oi,
-                2
-            ) if total_ce_oi != 0 else 0
+                option_df, spot_price, atm_strike, expiry = fetch_option_chain(
+                    kite=kite,
+                    instruments=instruments_df,
+                    selected_index=selected_index,
+                    strike_range=num_strikes,
+                    custom_atm=manual_strike if manual_strike != 0 else 0,
+                )
 
-            live_data = {
-                "data": option_df,
-                "spot": spot_price,
-                "atm": atm_strike,
-                "expiry": expiry,
-                "total_ce_oi": total_ce_oi,
-                "total_pe_oi": total_pe_oi,
-                "total_pcr": total_pcr,
-                "timestamp": datetime.now(),
-            }
+                total_ce_oi = option_df["CE_OI"].sum()
+                total_pe_oi = option_df["PE_OI"].sum()
+
+                total_pcr = round(
+                    total_pe_oi / total_ce_oi,
+                    2
+                ) if total_ce_oi != 0 else 0
+
+                live_data = {
+                    "data": option_df,
+                    "spot": spot_price,
+                    "atm": atm_strike,
+                    "expiry": expiry,
+                    "total_ce_oi": total_ce_oi,
+                    "total_pe_oi": total_pe_oi,
+                    "total_pcr": total_pcr,
+                    "timestamp": datetime.now(),
+                }
+
+                st.session_state.cached_live_data = live_data
+                st.session_state.last_fetch_time = now_ts
+
+        else:
+
+            live_data = st.session_state.get("cached_live_data")
+
+            if live_data is None:
+
+                st.warning("Waiting for first live fetch...")
+
+                st.stop()
 
         save_oi_snapshot(
             spot=float(live_data["spot"]),
@@ -862,8 +897,14 @@ if valid and st.session_state.load_clicked:
             index_name=str(selected_index),
         )
 
-        history_df = load_today_history(selected_index)
-        full_history_df = load_full_history(selected_index)
+            history_df = load_today_history(selected_index)
+            full_history_df = load_full_history(selected_index)
+
+            if history_df is None:
+                history_df = pd.DataFrame()
+
+            if full_history_df is None:
+                full_history_df = pd.DataFrame()
 
         # =====================================================
         # AI SIGNAL
@@ -931,9 +972,26 @@ if valid and st.session_state.load_clicked:
             signal = signal_data["signal"]
 
             # =====================================================
+                        # =====================================================
             # TELEGRAM ALERTS
             # =====================================================
-            if signal != st.session_state.last_signal:
+
+            if "last_signal" not in st.session_state:
+
+                st.session_state.last_signal = None
+
+            last_alert_time = st.session_state.get("last_alert_time")
+
+            alert_due = (
+                last_alert_time is None or
+                (datetime.now() - last_alert_time).total_seconds()
+                >= alert_interval_minutes * 60
+            )
+
+            if (
+                signal != st.session_state.last_signal
+                and alert_due
+            ):
 
                 strike_col = None
 
@@ -989,6 +1047,7 @@ Time: {datetime.now(pytz.timezone("Asia/Kolkata")).strftime('%I:%M:%S %p')} IST
                 send_telegram_alert(alert_message)
 
                 st.session_state.last_signal = signal
+                st.session_state.last_alert_time = datetime.now()
 
             confidence = signal_data["confidence"]
 
