@@ -742,6 +742,88 @@ else:
     """, unsafe_allow_html=True)
 
 # =====================================================
+# MARKET NEWS FEED
+# =====================================================
+import feedparser
+import time
+
+@st.cache_data(ttl=300)  # refresh every 5 minutes
+def fetch_market_news():
+    feeds = [
+        # General market news
+        "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+        "https://www.moneycontrol.com/rss/MCtopnews.xml",
+        # NSE/BSE
+        "https://www.business-standard.com/rss/markets-106.rss",
+    ]
+
+    news_items = []
+
+    for url in feeds:
+        try:
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:4]:  # 4 items per feed
+                news_items.append({
+                    "title": entry.get("title", ""),
+                    "link":  entry.get("link", "#"),
+                    "time":  entry.get("published", ""),
+                    "source": feed.feed.get("title", "Market News"),
+                })
+        except Exception:
+            pass
+
+    return news_items[:12]  # max 12 items total
+
+news_items = fetch_market_news()
+
+if news_items:
+    # Scrolling ticker at top
+    ticker_text = "  ●  ".join([f"📰 {n['title']}" for n in news_items])
+    st.markdown(f"""
+    <div style="background:#020f06;border:1px solid #00d4ff22;border-radius:8px;
+                padding:8px 0;margin-bottom:0.8rem;overflow:hidden;position:relative;">
+        <div style="display:inline-block;white-space:nowrap;
+                    animation:ticker 60s linear infinite;padding-left:100%;">
+            <span style="font-family:'Rajdhani',sans-serif;font-size:12px;
+                         color:#00d4ff;letter-spacing:0.08em;text-shadow:0 0 8px #00d4ff55;">
+                {ticker_text}
+            </span>
+        </div>
+    </div>
+    <style>
+    @keyframes ticker {{
+        0%   {{ transform: translateX(0); }}
+        100% {{ transform: translateX(-100%); }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Expandable news cards below
+    with st.expander("📰 Market News & Announcements", expanded=False):
+        cols = st.columns(2)
+        for i, item in enumerate(news_items):
+            with cols[i % 2]:
+                # Clean up source name
+                source = item["source"][:20] if item["source"] else "News"
+                st.markdown(f"""
+                <a href="{item['link']}" target="_blank" style="text-decoration:none;">
+                <div style="background:#041208;border:1px solid #00ff6620;
+                            border-radius:10px;padding:12px 14px;margin-bottom:10px;
+                            transition:border-color 0.2s;cursor:pointer;">
+                    <div style="font-family:'Rajdhani',sans-serif;font-size:9px;
+                                letter-spacing:0.18em;text-transform:uppercase;
+                                color:#00ff6655;margin-bottom:5px;">
+                        ⚡ {source}
+                    </div>
+                    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;
+                                font-weight:600;color:#a0ffb8;line-height:1.4;">
+                        {item['title'][:120]}{'...' if len(item['title']) > 120 else ''}
+                    </div>
+                </div>
+                </a>
+                """, unsafe_allow_html=True)
+
+# =====================================================
 # LIVE INDEX PRICES TICKER
 # =====================================================
 

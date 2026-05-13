@@ -5,3 +5,4 @@ plotly
 numpy
 streamlit-autorefresh
 pytz
+feedparser==6.0.11
